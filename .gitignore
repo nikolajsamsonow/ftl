@@ -1,0 +1,5 @@
+*.o
+binutils-gdb/
+findings_gold/
+findings_ld/
+
