@@ -1,0 +1,13 @@
+--- "output (copy).cc"	2020-01-18 16:55:48.000000000 +0300
++++ output.cc	2020-07-13 13:37:31.329076314 +0300
+@@ -5091,6 +5091,10 @@
+ void
+ Output_file::open(off_t file_size)
+ {
++  // A crutch!
++  if (file_size >= 1073741824)
++    gold_fatal(_("%s: open: %s"), this->name_, "file is too big!\n");
++
+   this->file_size_ = file_size;
+ 
+   // Unlink the file first; otherwise the open() may fail if the file

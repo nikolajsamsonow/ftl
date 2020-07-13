@@ -42,7 +42,7 @@ def generate_document_from_path(path):
     return doc
 
 def main():
-    if len(sys.argv) == 1 or (sys.argv[1] != 'ld' and sys.argv[1] != 'gold'):
+    if len(sys.argv) == 1 or (sys.argv[1] != 'ld' and sys.argv[1] != 'gold' and sys.argv[1] != 'lld'):
         print('Usage: save.py <linker>, where linker is either "ld" or "gold".\n')
         return
         
