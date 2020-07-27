@@ -7,6 +7,8 @@ cd binutils-gdb
 
 Apply `output.patch` to `gold/output.cc`.
 
+In `main.c` and `main.cc` rename `main` to `the_real_name` and use `main` from `splitter.c`.
+
 ```
 mkdir build
 CC=afl-gcc CXX=afl-g++ ./configure --prefix=$PWD/build --enable-gold --disable-shared
