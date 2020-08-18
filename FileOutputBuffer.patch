@@ -1,0 +1,12 @@
+--- "FileOutputBuffer (orig).cpp"	2020-08-18 13:36:37.906728131 +0300
++++ FileOutputBuffer.cpp	2020-08-16 00:08:41.036895825 +0300
+@@ -164,6 +164,9 @@
+ // Create an instance of FileOutputBuffer.
+ Expected<std::unique_ptr<FileOutputBuffer>>
+ FileOutputBuffer::create(StringRef Path, size_t Size, unsigned Flags) {
++  if (Size >= 1073741824)
++    return errorCodeToError(errc::file_too_large);
++ 
+   // Handle "-" as stdout just like llvm::raw_ostream does.
+   if (Path == "-")
+     return createInMemoryBuffer("-", Size, /*Mode=*/0);
