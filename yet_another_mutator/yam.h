@@ -13,6 +13,7 @@ class yam {
 
   void mutate_elf_header ();
   void mutate_section_header ();
+  void mutate_section ();
 
   bool has_ehdr () const
   {
@@ -21,7 +22,7 @@ class yam {
 
   bool has_shdr () const
   {
-    return has_shdr_;
+    return real_shnum_ > 0;
   }
 
  private:
@@ -29,8 +30,9 @@ class yam {
       BITFLIP = 0, ARITH = 1
   };
   static mut choose_a_mutation ();
+  Elf64_Shdr *choose_a_section ();
 
-  static constexpr double BITFLIP_RATIO = 0.1;
+  static constexpr double BITFLIP_RATIO = 0.2;
   static void bitflip (uint8_t *buf, size_t buf_size);
 
   static const int ARITH_BOUND = 64;
@@ -40,10 +42,9 @@ class yam {
   size_t buf_size_;
 
   bool has_ehdr_;
-  bool has_shdr_;
+  size_t real_shnum_;
 
   Elf64_Ehdr *ehdr_;
-  Elf64_Shdr *shdr_;
 
   static const size_t Elf64_Ehdr_entries_len = 14;
   std::pair<size_t, size_t> Elf64_Ehdr_entries[Elf64_Ehdr_entries_len];

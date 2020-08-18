@@ -1,9 +1,14 @@
 #include "yam.h"
 
+#include <algorithm>
 #include <cmath>
 
+// [min; max) \cap \mathbb{N}_0
 int rand_in_range (int min, int max)
 {
+  if (min == max)
+    return min;
+
   return (rand () % (max - min)) + min;
 }
 
@@ -12,16 +17,14 @@ void yam::set_buffer(uint8_t *buf, size_t buf_size)
   buf_ = buf;
   buf_size_ = buf_size;
 
-  if (buf_size_ < sizeof(Elf64_Ehdr))
-    {
-      has_ehdr_ = false;
-      return;
-    }
+  has_ehdr_ = buf_size_ >= sizeof(Elf64_Ehdr);
 
-  has_ehdr_ = true;
+  if (!has_ehdr_)
+    return;
+
   ehdr_ = reinterpret_cast<Elf64_Ehdr *>(buf_);
 
-  has_shdr_ = ehdr_->e_shoff != 0 && buf_size_ >= ehdr_->e_shoff + ehdr_->e_shentsize * ehdr_->e_shnum;
+  real_shnum_ = ehdr_->e_shoff == 0 || ehdr_->e_shoff >= buf_size ? 0 : std::min(static_cast<size_t>(ehdr_->e_shnum), (buf_size_ - ehdr_->e_shoff)/sizeof(Elf64_Shdr));
 }
 
 void yam::mutate_elf_header ()
@@ -42,13 +45,13 @@ void yam::mutate_section_header ()
   if (!has_ehdr () || !has_shdr ())
     return;
 
-  size_t sec = rand_in_range(0, ehdr_->e_shnum);
-  uint8_t *sec_addr = buf_ + ehdr_->e_shoff + sec * ehdr_->e_shentsize;
+  size_t sec = rand_in_range(0, real_shnum_);
+  uint8_t *sec_addr = buf_ + ehdr_->e_shoff + sec * sizeof(Elf64_Shdr);
 
   mut m = choose_a_mutation ();
 
   if (m == mut::BITFLIP)
-    bitflip (sec_addr, ehdr_->e_shentsize);
+    bitflip (sec_addr, sizeof(Elf64_Shdr));
   else if (m == mut::ARITH)
     {
       std::pair<size_t, size_t> entry = Elf64_Shdr_entries[rand_in_range(0, Elf64_Shdr_entries_len)];
@@ -56,9 +59,48 @@ void yam::mutate_section_header ()
     }
 }
 
+void yam::mutate_section ()
+{
+  Elf64_Shdr *sec = choose_a_section();
+
+  if (sec == nullptr)
+    return;
+
+  bitflip(buf_ + sec->sh_offset, std::min(sec->sh_size, buf_size_ - sec->sh_offset));
+}
+
 yam::mut yam::choose_a_mutation ()
 {
   return static_cast<mut>(rand_in_range (mut::BITFLIP, mut::ARITH + 1));
+}
+
+Elf64_Shdr *yam::choose_a_section ()
+{
+  if (!has_ehdr () || !has_shdr ())
+    return nullptr;
+
+  uint16_t *validity_map = new uint16_t[real_shnum_];
+  size_t valid_sections_cnt = 0;
+
+  Elf64_Shdr *first_sec = reinterpret_cast<Elf64_Shdr *>(buf_ + ehdr_->e_shoff);
+
+  for (int i = 0; i < real_shnum_; ++i)
+    {
+      // this is a valid one, but there is no fun in mutating it
+      if (first_sec[i].sh_type == SHT_NOBITS)
+        continue;
+
+      if (first_sec[i].sh_offset < buf_size_)
+        validity_map[valid_sections_cnt++] = i;
+    }
+
+    if (valid_sections_cnt == 0)
+      return nullptr;
+
+  size_t result = validity_map[rand_in_range(0, valid_sections_cnt)];
+  delete[] validity_map;
+
+  return &first_sec[result];
 }
 
 void yam::bitflip (uint8_t *buf, size_t buf_size)
@@ -68,7 +110,7 @@ void yam::bitflip (uint8_t *buf, size_t buf_size)
   for (int i = 0; i < bits_to_flip; ++i)
     {
       size_t byte = rand_in_range (0, buf_size);
-      size_t bit = rand_in_range (0, sizeof (uint8_t));
+      size_t bit = rand_in_range (0, 8);
 
       buf[byte] ^= uint8_t(1) << bit;
     }
