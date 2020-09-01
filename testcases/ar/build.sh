@@ -3,7 +3,7 @@
 mkdir -p in
 gcc -c f.c
 gcc -c main.c
-cat f.c main.c > test.o
-mv test.o in
+ar rvs test.a f.o main.o
+mv test.a in
 rm f.o main.o
 
