@@ -82,7 +82,7 @@ int main (int argc, char **argv)
     {
       if (i == idx)
         {
-          new_argv[i] = malloc(strlen(argv[idx]) + SUFFIX_BUF_LEN);
+          new_argv[i] = (char *) malloc(strlen(argv[idx]) + SUFFIX_BUF_LEN);
           strcpy(new_argv[i], argv[idx]);
           strcat(new_argv[i], ".0.o");
           FILE *tmp = fopen (new_argv[i], "wb");
@@ -93,7 +93,7 @@ int main (int argc, char **argv)
           for (int j = 1; j < file_count; ++j)
             {
               ++argv_offset;
-              new_argv[i + argv_offset] = malloc(strlen(argv[idx]) + SUFFIX_BUF_LEN);
+              new_argv[i + argv_offset] = (char *) malloc(strlen(argv[idx]) + SUFFIX_BUF_LEN);
               strcpy(new_argv[i + argv_offset], argv[idx]);
               sprintf(suffix_buf, ".%d.o", j);
               strcat(new_argv[i + argv_offset], suffix_buf);
@@ -122,3 +122,4 @@ int main (int argc, char **argv)
 
   return result;
 }
+

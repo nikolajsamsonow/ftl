@@ -2,4 +2,5 @@
 binutils-gdb/
 findings_gold/
 findings_ld/
+work_dir/
 
