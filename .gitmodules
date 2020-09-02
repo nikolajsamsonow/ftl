@@ -1,0 +1,9 @@
+[submodule "AFL"]
+	path = AFL
+	url = https://github.com/google/AFL
+[submodule "aflsmart"]
+	path = aflsmart
+	url = https://github.com/aflsmart/aflsmart
+[submodule "AFLplusplus"]
+	path = AFLplusplus
+	url = https://github.com/AFLplusplus/AFLplusplus

@@ -1,38 +1,43 @@
-### 1. Building ld and gold.
+### 1. Building fuzzers
+
+#### 1.1 Fuzzers 
+
+Please refer to [AFL](https://github.com/google/AFL/blob/master/docs/INSTALL)'s, [AFLSmart](https://github.com/aflsmart/aflsmart#installation
+)'s and [AFL++](https://github.com/AFLplusplus/AFLplusplus#building-and-installing-afl)'s documentation.
+
+#### 1.2 Yet another mutator
+
+To compile `yet_another_mutator` run the following lines:
 
 ```
-git clone git://sourceware.org/git/binutils-gdb.git
-cd binutils-gdb
-```
-
-Apply `output.patch` to `gold/output.cc`.
-
-In `main.c` and `main.cc` rename `main` to `the_real_name` and use `main` from `splitter.c`.
-
-```
-mkdir build
-CC=afl-gcc CXX=afl-g++ ./configure --prefix=$PWD/build --enable-gold --disable-shared
+cd yet_another_mutator
+mkdir build && cd build
+cmake ../
 make
-make install
 ```
 
-### 2. Compiling test cases.
+### 2. Download, patch and build the linkers
 
-#### 2.1. Single file.
+#### 2.1. [OPTIONAL] Apply patches to Gold and LLD
 
-`gcc -c testcases_src/*.c && mv *.o testcases/`
+`patch binutils/gold/output.cc patches/gold.patch` and `patch llvm/llvm/lib/Support/FileOutputBuffer.cpp patches/lld.patch` for Gold and LLD respectively.
 
-#### 2.2. Multiple files.
+#### 2.2. [OPTIONAL] Apply splitter.c
 
-```
-gcc -c testcases_ar_src/*.c
-ar rvs test.a testcases_ar_src/main.o testcases_ar_src/f.o
-mv test.a testcases/
-```
+In `binutils/gold/main.cc`, `binutils/ld/ldmain.c` and `llvm/lld/tools/lld/lld.cpp` rename `main` to `the_real_main` and then append contents of `splitter.c` to the modified files.
 
-### 3. Running the test cases.
+#### 2.3. Downloading and building
 
-#### 3.1. 
+TODO
+
+### 3. Generate testcases
+
+Just type `./testcases.sh`. Configurations for fuzzing will apper in `work_dir`.
+If you want to add a new configuration, create a directory in `testcases`, put your testcase in there and write building rules to `build.sh`.
+
+### 4. Fuzzing
+
+#### 4.1. [OPTIONAL] Prepare for fuzzing
 
 AFL may ask you to execute the following lines:
 
@@ -41,15 +46,24 @@ echo core >/proc/sys/kernel/core_pattern
 echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 ```
 
-#### 3.2. 
+#### 4.2. Fuzz
 
-Use `./run_gold.sh` or `./run_ld.sh` or `./run_lld.sh` to start fuzzing.
+Run `screen timeout -s INT 12h <path_to_afl-fuzz> -i in -o sync_dir -M fuzzer01 -- <path_to_linker> -o a.out -dynamic-linker /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o @@ /usr/lib/x86_64-linux-gnu/libc.so /usr/lib/x86_64-linux-gnu/crtn.o` to spawn a master process. Replace `-M` to `-S` to spawn a slave process. **Don't forget to increase the number for each instance in `fuzzer01`**. 
 
-TODO: libc and crt paths are hardcoded :( .
+*When fuzzing LLD be sure to pass `-t 10000 -m 4G` (or any other reasonable limits) to AFL.*
 
-### 4. Saving the findings.
+*When fuzzing with `yet_another_mutator` pass `AFL_CUSTOM_MUTATOR_LIBRARY=yet_another_mutator/build/libyet_another_mutator.so` to AFLSmart.*
 
-Use `./save.py findings_gold` or `./save.py findings_ld` or `./save.py findings.lld` to save the findings into MongoDB.
+*When fuzzing with AFLSmart pass `-w peach -g <model>.xml -x <dict>.dict`.*
 
-You can export a collection with `mongoexport --db=ftl_afl --collection=<either gold, ld, lld> --out=db/ftl_afl_<either gold, ld, lld>.json`.
+#### 4.3. [OPTIONAL] Remove duplicate crashes
+
+Use `remove_duplicates.py` like this: `python3 remove_duplicates.py --sync_dir work_dir/<configuration>/sync_dir --showmap_path AFL/afl-showmap -- <path to gold>`.
+
+### 5. [OPTIONAL] Save the results
+
+It requires to have MongoDB installed.
+Save the results with `./save.py work_dir/<configuration>`.
+
+### 6. Check out `result.ods` and `presentation.odp` C:
 
